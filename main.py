@@ -35,7 +35,7 @@ class Token(ndb.Model):
 
 class MainPage(webapp2.RequestHandler):
   def get(self):
-    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1 LIMIT 500 ', token_key)
+    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1 ', token_key)
 
     self.response.out.write('<html><body>')
 
@@ -51,18 +51,47 @@ class MainPage(webapp2.RequestHandler):
 
 class dell(webapp2.RequestHandler):
   def get(self):
-    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1 LIMIT 50 ', token_key)
+    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1  ', token_key)
     for token in tokens:
       token.key.delete()
     self.response.out.write('deleted')
 
+class test(webapp2.RequestHandler):
+  def get(self):
+    import os
+    f = open("test_spam.txt", 'r')
+    words = f.read().split()
+    prob_dict_spam={}
+    prob_dict_legitimate={}
+
+    total = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1', token_key)
+    c=0
+    for t in total:
+    	c+=1
+    # print c, "total"
+
+    p_spam = 0
+    p_legitimate = 0
+
+    for word in words:
+	    if word.isalpha():
+	    	tokens = ndb.gql('SELECT * FROM Token WHERE  word = :2 AND ANCESTOR IS :1  ', token_key, word )
+	    	for token in tokens:
+		    	p_spam = p_spam + float(token.span_doc_count+1)/(c+token.total_count)
+		    	p_legitimate = p_legitimate + float(token.legitimate_doc_count +1)/(c+token.total_count)
+
+	      
+    f.close()
+    print p_legitimate, "legitimate"
+    print p_spam, "Spam"
+
 class reset(webapp2.RequestHandler):
   def get(self):
-    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1 LIMIT 50 ', token_key)
+    tokens = ndb.gql('SELECT * FROM Token WHERE ANCESTOR IS :1', token_key)
     for token in tokens:
       token.key.delete()
     import os
-    src_dir=os.getcwd()+'/spam'
+    src_dir=os.getcwd()+'/spam'	
 
     N = len(os.listdir(src_dir))
 
@@ -72,7 +101,7 @@ class reset(webapp2.RequestHandler):
 
     for filename in os.listdir(src_dir):
       filename = os.path.join(src_dir, filename)
-      f = open(filename, 'r');
+      f = open(filename, 'r')
       words = f.read().split()
       for word in words:
         if word.isalpha():
@@ -133,5 +162,6 @@ class reset(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
   ('/', MainPage),
   ('/reset', reset),
-  ('/dell', dell)
+  ('/dell', dell),
+  ('/test', test)
 ], debug=True)
